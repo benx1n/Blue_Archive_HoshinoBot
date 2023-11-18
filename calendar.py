@@ -1,12 +1,16 @@
-import hoshino
-import nonebot
 import re
 import traceback
-from .ba_calendar.generate import *
-from .utils import *
-from .moudle.ba_logo import draw_pic
 
-HELP_STR = '''
+import hoshino
+import httpx
+import nonebot
+from hoshino.typing import MessageSegment
+
+from .ba_calendar.generate import *
+from .moudle.ba_logo import draw_pic
+from .utils import *
+
+HELP_STR = """
 碧蓝档案综合插件
 `ba日历` : 本群订阅服务器日历，需要先订阅(见第三条)，默认取第一位，需要调整顺序先off掉其他服
 `ba(日/国/db日/en日/国际/db国际)服日历` : 指定服务器日程
@@ -21,9 +25,9 @@ HELP_STR = '''
 `ba角色列表` : 列出所有角色头像及昵称
 `ba查询+角色名或昵称` : 查询角色信息
 `国服/国际服+千里眼/未来视` : 获取卡池排期和抽卡推荐
-`ba攻略(攻略查询、/攻略)+关键词` : 查询攻略,支持模糊查询,关键词可以是学生/地图/活动等，使用`杂图`关键词获取详情 
+`ba攻略(攻略查询、/攻略)+关键词` : 查询攻略,支持模糊查询,关键词可以是学生/地图/活动等，使用`杂图`关键词获取详情
 `balogo+上文/下文` : 生成你游风格logo,上下文使用`/`分隔
-'''.strip()
+""".strip()
 
 sv = hoshino.Service('ba_calendar', enable_on_default=False, help_=HELP_STR, bundle='ba日历')
 
@@ -84,7 +88,7 @@ def update_group_schedule(group_id):
         id=f'ba_calendar_{group_id}',
         replace_existing=True,
         hour=group_data[group_id]['hour'],
-        minute=group_data[group_id]['minute']
+        minute=group_data[group_id]['minute'],
     )
 
 
@@ -96,7 +100,7 @@ async def start_scheduled(bot, ev):
         server = 'jp'
     elif server_name == '国':
         server = 'cn'
-    elif server_name in ["国际", "台", "韩", "美"]:
+    elif server_name in ['国际', '台', '韩', '美']:
         server = 'global'
     elif server_name == 'en日':
         server = 'en-jp'
@@ -151,10 +155,10 @@ async def start_scheduled(bot, ev):
         elif 'cardimage' in cmd:
             if 'cardimage' not in group_data[group_id] or not group_data[group_id]['cardimage']:
                 group_data[group_id]['cardimage'] = True
-                msg = f'已切换为cardimage模式'
+                msg = '已切换为cardimage模式'
             else:
                 group_data[group_id]['cardimage'] = False
-                msg = f'已切换为标准image模式'
+                msg = '已切换为标准image模式'
             save_data()
         else:
             msg = '指令错误'
@@ -193,3 +197,21 @@ async def send_ba_logo(bot, ev):
         await bot.send(ev, '生成失败……请检查命令格式是否正确，前后文本请使用/分隔')
     except Exception:
         await bot.send(ev, '请检查指令是否正确，前后文本请使用/分隔')
+
+
+@sv.on_prefix('ba帮助')
+async def send_ba_help(bot, ev):
+    try:
+        from base64 import b64encode
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get('https://benx1n.oss-cn-beijing.aliyuncs.com/ba_help.png')
+            img = resp.content
+            if isinstance(img, bytes):
+                b64_img = f'base64://{b64encode(img).decode()}'
+                await bot.send(ev, str(MessageSegment.image(b64_img)))
+            else:
+                await bot.send(ev, '出了点问题')
+    except Exception:
+        print(traceback.format_exc())
+        await bot.send(ev, '出了点问题')
